@@ -77,8 +77,7 @@ def if_loggedIn(f):
 def homepage():
     return render_template('index.html')
 
-@app.route('/dashboard')
-# harus log in dulu
+@app.route('/dashboard') # harus log in dulu
 def dashboard():
     user = get_current_user()
     return render_template('dasboard.html')
