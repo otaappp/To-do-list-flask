@@ -45,8 +45,8 @@
                 {{ session.username }}
               </a>
               <ul class="dropdown-menu" aria-labelledby="navbarDropdownMenuLink">
-                <li><a class="dropdown-item" href="#">Delete Account</a></li>
-                <li><a class="dropdown-item" href="#">Log Out</a></li>
+                <li><a class="dropdown-item" href="{{url_for('popuser')}}">Delete Account</a></li>
+                <li><a class="dropdown-item" href="{{url_for('logout')}}">Log Out</a></li>
               </ul>
             </li>
           </ul>

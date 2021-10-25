@@ -1,10 +1,9 @@
-from datetime import datetime
+import datetime
+from flask import Flask, app, session, render_template, request, redirect, abort
 from enum import unique
 from flask.helpers import flash, url_for
 from peewee import *
-from flask import Flask, app, session, render_template, request, redirect, abort
 from functools import wraps
-from miniTweeter.app import DATABASE
 
 app = Flask(__name__)
 app.secret_key = '2bba76bc66ff5f0a50ccd2d1d70f5333'
@@ -29,7 +28,7 @@ class Task(BaseModel):
     event = TextField()
     event_date = DateField()
     done = BooleanField(default = False)
-    updated_at = DateTimeField(default = datetime.dateime.now())
+    updated_at = DateTimeField(default = datetime.datetime.now())
 
 @app.before_request
 def before_request():
@@ -40,18 +39,21 @@ def after_request(response):
     database.close()
     return response
 
+def create_tables():
+    with database:
+        database.create_tables([User, Task])
+
 # End Database
 
 # Helper Function
 
 def auth_user(user):
     session['logged_in'] = True
-    session['user_id'] = user.id
     session['username'] = user.username
 
 def get_current_user():
     if session.get('logged_in'):
-        return User.get(User.id == session['user_id'])
+        return User.get(User.username == session['username'])
 
 def if_not_loggedIn(f):
     @wraps(f)
@@ -77,15 +79,9 @@ def if_loggedIn(f):
 def homepage():
     return render_template('index.html')
 
-@app.route('/dashboard')
-# harus log in dulu
-def dashboard():
-    user = get_current_user()
-    return render_template('dasboard.html')
-
 @app.route('/register', methods = ['GET', 'POST'])
 def register():
-    if request.method == 'POST' and request.form['username', 'email', 'password']:
+    if request.method == 'POST' and request.form['username']:
         try:
             with database.atomic():
                 user = User.create(
@@ -101,7 +97,7 @@ def register():
 
 @app.route('/login', methods = ['GET', 'POST'])
 def login():
-    if request.method == 'POST' and request.form['email', 'password']:
+    if request.method == 'POST' and request.form['email']:
         try:
             user = User.get(
                 (User.email == request.form['email'])
@@ -112,8 +108,27 @@ def login():
             flash('email atau password salah!')
         else:
             auth_user(user)
-            return redirect (url_for('dasboard'))
+            return redirect (url_for('dashboard'))
     return render_template('login.html')
 
+@app.route('/logout')
+def logout():
+    session.pop('logged_in', None)
+    session.pop('user_id', None)
+    return redirect(url_for('login'))
+
+@app.route('/popuser')
+def popuser():
+    user = get_current_user()
+    User.delete().where(User.id == user.id).execute()
+    session.pop('logged_in', None)
+    session.pop('user_id', None)
+    return redirect(url_for('homepage'))
+
+@app.route('/dashboard')
+# harus log in dulu
+def dashboard():
+    user = get_current_user()
+    return render_template('dashboard.html')
 
 # End Route
