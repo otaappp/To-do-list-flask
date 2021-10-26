@@ -28,7 +28,7 @@ class Task(BaseModel):
     event = TextField()
     event_date = DateField()
     done = BooleanField(default = False)
-    updated_at = DateTimeField(default = datetime.datetime.now())
+    updated_at = DateTimeField(default = datetime.datetime.now)
 
 @app.before_request
 def before_request():
@@ -108,7 +108,7 @@ def login():
             flash('email atau password salah!')
         else:
             auth_user(user)
-            return redirect (url_for('dashboard'))
+            return redirect (url_for('dashboard', username=user.username))
     return render_template('login.html')
 
 @app.route('/logout')
@@ -119,16 +119,33 @@ def logout():
 
 @app.route('/popuser')
 def popuser():
-    user = get_current_user()
-    User.delete().where(User.id == user.id).execute()
-    session.pop('logged_in', None)
-    session.pop('user_id', None)
-    return redirect(url_for('homepage'))
+    try:
+        user = User.get(User.username == session['username'])
+    except User.DoesNotExist:
+        return redirect(url_for('login'))
+    else:
+        Task.delete().where(Task.user == user.id).execute()
+        User.delete().where(User.id == user.id).execute()
+        return redirect(url_for('logout'))
 
-@app.route('/dashboard')
+@app.route('/<username>')
 # harus log in dulu
-def dashboard():
+def dashboard(username):
     user = get_current_user()
     return render_template('dashboard.html')
 
+@app.route('/add-task', methods = ['GET', 'POST'])
+#harus log in dulu
+def addTask():
+    if request.method == 'POST':
+        user = get_current_user()
+        eventDateTransform = request.form['eventDate'].split("-")
+        Task.create(
+            user = user.id,
+            event = request.form['event'],
+            event_date = datetime.date(int(eventDateTransform[0]), int(eventDateTransform[1]), int(eventDateTransform[2]))
+        )
+        flash('Task berhasil ditambahkan!')
+        return redirect(url_for('addTask'))
+    return render_template('addTask.html')
 # End Route

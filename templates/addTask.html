@@ -1,0 +1,23 @@
+{% extends "layout.html" %}
+
+{% block body %}
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            {% for message in messages %}
+                <p>{{ message }}</p>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+    <br>
+    <form action="{{url_for('addTask')}}" method="POST">
+        <div class="mb-3">
+          <label for="event" class="form-label">Event</label>
+          <input type="text" class="form-control" id="event" name="event">
+        </div>
+        <div class="mb-3">
+          <label for="eventDate" class="form-label">Event Date</label>
+          <input type="date" class="form-control" id="eventDate" name="eventDate">
+        </div>
+        <button type="submit" class="btn btn-primary">Create</button>
+      </form>
+{% endblock %}
