@@ -1,0 +1,9 @@
+{% extends "layout.html" %}
+
+{% block body %}
+    <ul>
+    {% for task in tasks %}
+        <li><a href="{{url_for('onDate', time=task.event_date)}}">{{ task.event_date }}</a></li>
+    {% endfor %}
+    </ul>
+{% endblock %}

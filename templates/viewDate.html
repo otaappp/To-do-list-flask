@@ -1,0 +1,10 @@
+{% extends "layout.html" %}
+
+{% block body %}
+
+    {% for task in tasks %}
+        {{ task.event }} - {% if task.done == True %} Selesai {% else %} Belum Selesai {% endif %}
+        <br>
+    {% endfor %}
+
+{% endblock %}

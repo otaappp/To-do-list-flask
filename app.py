@@ -148,4 +148,27 @@ def addTask():
         flash('Task berhasil ditambahkan!')
         return redirect(url_for('addTask'))
     return render_template('addTask.html')
+
+@app.route('/view')
+def allTask():
+    try:
+        user = User.get(User.username == session['username'])
+    except User.DoesNotExist:
+        return redirect(url_for('login'))
+    else:
+        tasks = (Task.select(Task.event_date).where(Task.user == user.id).order_by(Task.event_date.desc()).distinct())
+        return render_template('view.html', tasks=tasks)
+    
+@app.route('/view/<time>')
+def onDate(time):
+    try:
+        user = User.get(User.username == session['username'])
+    except User.DoesNotExist:
+        return redirect(url_for('login'))
+    else:
+        timeTransform = time.split("-")
+        index = datetime.date(int(timeTransform[0]), int(timeTransform[1]), int(timeTransform[2]))
+        tasks = (Task.select().where((Task.user == user.id) & (Task.event_date == index)).order_by(Task.event.asc()))
+        return render_template('viewDate.html', tasks=tasks)
+
 # End Route
