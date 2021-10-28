@@ -1,4 +1,5 @@
 import datetime
+# import re
 from flask import Flask, app, session, render_template, request, redirect, abort
 from enum import unique
 from flask.helpers import flash, url_for
@@ -55,7 +56,7 @@ def get_current_user():
     if session.get('logged_in'):
         return User.get(User.username == session['username'])
 
-def if_not_loggedIn(f):
+def mustLogIn(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if not session.get('logged_in'):
@@ -63,11 +64,11 @@ def if_not_loggedIn(f):
         return f(*args, **kwargs)
     return decorated_function
     
-def if_loggedIn(f):
+def ifLoggedIn(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if session.get('logged_in'):
-            return redirect(url_for('homepage'))
+            return redirect(url_for('dashboard'))
         return f(*args, **kwargs)
     return decorated_function
 
@@ -80,8 +81,9 @@ def homepage():
     return render_template('index.html')
 
 @app.route('/register', methods = ['GET', 'POST'])
+@ifLoggedIn
 def register():
-    if request.method == 'POST' and request.form['username']:
+    if request.method == 'POST' and request.form['username'] and request.form['email'] and request.form['password']:
         try:
             with database.atomic():
                 user = User.create(
@@ -96,12 +98,13 @@ def register():
     return render_template('register.html')
 
 @app.route('/login', methods = ['GET', 'POST'])
+@ifLoggedIn
 def login():
-    if request.method == 'POST' and request.form['email']:
+    if request.method == 'POST' and request.form['email'] and request.form['password']:
         try:
             user = User.get(
                 (User.email == request.form['email'])
-                and
+                &
                 (User.password == request.form['password'])
             )
         except User.DoesNotExist:
@@ -112,12 +115,13 @@ def login():
     return render_template('login.html')
 
 @app.route('/logout')
+@mustLogIn
 def logout():
     session.pop('logged_in', None)
-    session.pop('user_id', None)
     return redirect(url_for('login'))
 
 @app.route('/popuser')
+@mustLogIn
 def popuser():
     try:
         user = User.get(User.username == session['username'])
@@ -129,46 +133,152 @@ def popuser():
         return redirect(url_for('logout'))
 
 @app.route('/<username>')
-# harus log in dulu
+@mustLogIn
 def dashboard(username):
     user = get_current_user()
-    return render_template('dashboard.html')
+    tasks = (
+        Task.select()
+        .where((Task.user == user.id) & (Task.event_date == datetime.date.today()))
+        .order_by(Task.event.asc())
+    )
+    return render_template('dashboard.html', tasks=tasks)
 
 @app.route('/add-task', methods = ['GET', 'POST'])
-#harus log in dulu
+@mustLogIn
 def addTask():
-    if request.method == 'POST':
+    if request.method == 'POST' and request.form['event'] and request.form['eventDate']:
         user = get_current_user()
         eventDateTransform = request.form['eventDate'].split("-")
         Task.create(
             user = user.id,
             event = request.form['event'],
-            event_date = datetime.date(int(eventDateTransform[0]), int(eventDateTransform[1]), int(eventDateTransform[2]))
+            event_date = datetime.date(
+                int(eventDateTransform[0]),
+                int(eventDateTransform[1]),
+                int(eventDateTransform[2])
+            )
         )
         flash('Task berhasil ditambahkan!')
         return redirect(url_for('addTask'))
     return render_template('addTask.html')
 
-@app.route('/view')
+@app.route('/view', methods = ['GET', 'POST'])
+@mustLogIn
 def allTask():
-    try:
-        user = User.get(User.username == session['username'])
-    except User.DoesNotExist:
-        return redirect(url_for('login'))
-    else:
-        tasks = (Task.select(Task.event_date).where(Task.user == user.id).order_by(Task.event_date.desc()).distinct())
-        return render_template('view.html', tasks=tasks)
+    user = User.get(User.username == session['username'])
+    tasks = (
+        Task.select(Task.event_date)
+        .where(Task.user == user.id)
+        .order_by(Task.event_date.desc())
+        .distinct()
+    )
+    if request.method == 'POST':
+        fromTransform = request.form['from'].split("-")
+        fromIndex = datetime.date(int(fromTransform[0]), int(fromTransform[1]), int(fromTransform[2]))
+        toTransform = request.form['to'].split("-") 
+        toIndex = datetime.date(int(toTransform[0]), int(toTransform[1]), int(toTransform[2]))
+        filtered = (
+            Task.select()
+            .where((Task.user == user.id) & (Task.event_date.between(fromIndex, toIndex)))
+            .order_by(Task.event_date.asc())
+            .distinct()
+        )
+        return render_template('view.html', filtered=filtered)
+    return render_template('view.html', tasks=tasks)
     
 @app.route('/view/<time>')
+@mustLogIn
 def onDate(time):
+    timeTransform = time.split("-")
+    index = datetime.date(int(timeTransform[0]), int(timeTransform[1]), int(timeTransform[2]))
     try:
         user = User.get(User.username == session['username'])
     except User.DoesNotExist:
         return redirect(url_for('login'))
     else:
+        try:
+            tasks = (
+                Task.select()
+                .where((Task.user == user.id) & (Task.event_date == index))
+                .order_by(Task.event.asc())
+            )
+        except Task.DoesNotExist:
+            abort(404)
+        return render_template('viewDate.html', tasks=tasks, time=time)
+
+@app.route('/upcoming')
+@mustLogIn
+def upcomingTask():
+    user = get_current_user()
+    tasks = (
+        Task.select()
+        .where((Task.user == user.id) & (Task.event_date > datetime.date.today()))
+        .order_by(Task.event_date.asc())
+    )
+    return render_template('upcoming.html', tasks=tasks)
+
+@app.route('/done/<time>/<id>')
+@mustLogIn
+def asDone(time, id):
+    query = (
+        Task.update(done = True)
+        .where(Task.id == id)
+        .execute()
+    )
+    timeTransform = time.split("-")
+    index = datetime.date(int(timeTransform[0]), int(timeTransform[1]), int(timeTransform[2]))
+    if index == datetime.date.today():
+        return redirect(url_for('dashboard', username=session['username']))
+    return redirect(url_for('onDate', time=time))
+
+@app.route('/undone/<time>/<id>')
+@mustLogIn
+def asUndone(time, id):
+    query = (
+        Task.update(done = False)
+        .where(Task.id == id)
+        .execute()
+    )
+    timeTransform = time.split("-")
+    index = datetime.date(int(timeTransform[0]), int(timeTransform[1]), int(timeTransform[2]))
+    if index == datetime.date.today():
+        return redirect(url_for('dashboard', username=session['username']))
+    return redirect(url_for('onDate', time=time))
+
+@app.route('/destroy/<time>/<id>')
+@mustLogIn
+def destroy(time, id):
+    query = (
+        Task.delete()
+        .where(Task.id == id)
+        .execute()
+    )
+    timeTransform = time.split("-")
+    index = datetime.date(int(timeTransform[0]), int(timeTransform[1]), int(timeTransform[2]))
+    if index == datetime.date.today():
+        return redirect(url_for('dashboard', username=session['username']))
+    return redirect(url_for('onDate', time=time))
+
+@app.route('/edit/<time>/<id>', methods = ['GET', 'POST'])
+@mustLogIn
+def edit(time, id):
+    if request.method == 'POST' and request.form['event'] and request.form['eventDate']:
+        query = (
+            Task.update(event = request.form['event'], event_date = request.form['eventDate'])
+            .where(Task.id == id)
+            .execute()
+        )
         timeTransform = time.split("-")
         index = datetime.date(int(timeTransform[0]), int(timeTransform[1]), int(timeTransform[2]))
-        tasks = (Task.select().where((Task.user == user.id) & (Task.event_date == index)).order_by(Task.event.asc()))
-        return render_template('viewDate.html', tasks=tasks)
+        flash('Task Berhasil diedit!')
+        if index == datetime.date.today():
+            return redirect(url_for('dashboard', username=session['username']))
+        return redirect(url_for('onDate', time=time))
+    user = get_current_user()
+    getTask = (
+        Task.select()
+        .where((Task.user == user.id) & (Task.id == id))
+    )
+    return render_template('editTask.html', task=getTask, oldTime=time)
 
 # End Route

@@ -1,0 +1,21 @@
+{% extends "layout.html" %}
+
+{% block body %}
+
+{% set seq = ['dark', 'danger', 'success', 'secondary', 'primary'] %}
+
+    {% if not tasks %}
+        There are no tasks in the future.
+    {% else %}
+        <h4>These are all your tasks in the future</h4>
+        <br>
+        {% for task in tasks %}
+            <div class="card text-center bg-{{ seq | random }} mb-2">
+                <div class="card-body">
+                    <a href="{{url_for('onDate', time=task.event_date)}}" class="link-light">{{ task.event_date }}</a>
+                </div>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+{% endblock %}

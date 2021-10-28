@@ -1,10 +1,42 @@
 {% extends "layout.html" %}
 
 {% block body %}
-
-    {% for task in tasks %}
-        {{ task.event }} - {% if task.done == True %} Selesai {% else %} Belum Selesai {% endif %}
-        <br>
-    {% endfor %}
+    <h4>Your tasks on {{ time }}</h4>
+    <br>
+    {% if not tasks %}
+        No Task on this date
+    {% else %}
+        <table class="table table-hover align-middle text-center">
+            {% for task in tasks %}
+                {% if task.done == True %}
+                    <tr class="table-success">
+                {% else %}
+                    <tr>
+                {% endif %}
+                    <td class="col-5">{{ task.event }}</td>
+                    {% if task.done == True %}
+                        <td class="col-2">Done</td>
+                        <td class="col-5">
+                            <button class="btn btn-dark" onclick="window.location.href='{{url_for('asUndone', time=time, id=task.id)}}';">
+                                Mark as Undone <i class="bi bi-arrow-counterclockwise"></i>
+                            </button>
+                    {% else %}
+                        <td class="col-2">Not done yet</td>
+                        <td class="col-5">
+                            <button class="btn btn-success" onclick="window.location.href='{{url_for('asDone', time=time, id=task.id)}}';">
+                                Mark as Done <i class="bi bi-check-circle-fill"></i>
+                            </button>
+                    {% endif %}
+                        <button class="btn btn-danger" onclick="window.location.href='{{url_for('destroy', time=time, id=task.id)}}';">
+                            Delete Task <i class="bi bi-trash-fill"></i>
+                        </button>
+                        <button class="btn btn-info text-light" onclick="window.location.href='{{url_for('edit', time=time, id=task.id)}}';">
+                            Edit Task <i class="bi bi-pencil-fill"></i>
+                        </button>
+                    </td>
+                </tr>
+            {% endfor %}
+        </table>
+    {% endif %}
 
 {% endblock %}

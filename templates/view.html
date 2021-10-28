@@ -1,9 +1,46 @@
 {% extends "layout.html" %}
 
 {% block body %}
-    <ul>
-    {% for task in tasks %}
-        <li><a href="{{url_for('onDate', time=task.event_date)}}">{{ task.event_date }}</a></li>
-    {% endfor %}
-    </ul>
+
+{% set seq = ['dark', 'danger', 'success', 'secondary', 'primary'] %}
+
+    <h4>Filter Task</h4>
+    <form action="{{url_for('allTask')}}" method="POST">
+        <div class="mb-3">
+            <label for="from" class="form-label">From</label>
+            <input type="date" class="form-control" id="from" name="from" required>
+        </div>
+        <div class="mb-3">
+            <label for="to" class="form-label">To</label>
+            <input type="date" class="form-control" id="to" name="to" required>
+        </div>
+        <button type="submit" class="btn btn-primary">Filter</button>
+    </form>
+    <hr>
+    {% if not filtered %}
+        {% if not tasks %}
+            No task has been created.
+        {% else %}
+            <h4>These are all your tasks</h4>
+            <br>
+            {% for task in tasks %}
+                <div class="card text-center bg-{{ seq | random }} mb-2">
+                    <div class="card-body">
+                        <a href="{{url_for('onDate', time=task.event_date)}}" class="link-light">{{ task.event_date }}</a>
+                    </div>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% else %}
+        <h4>Search result for {{ request.form['from'] }} to {{ request.form['to'] }}</h4>
+        <br>
+        {% for item in filtered %}
+            <div class="card text-center bg-{{ seq | random }} mb-2">
+                <div class="card-body">
+                    <a href="{{url_for('onDate', time=item.event_date)}}" class="link-light">{{ item.event_date }}</a>
+                </div>
+            </div>
+        {% endfor %}
+    {% endif %}
+
 {% endblock %}

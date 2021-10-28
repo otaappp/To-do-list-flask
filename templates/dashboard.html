@@ -1,1 +1,43 @@
 {% extends "layout.html" %}
+
+{% block body %}
+
+    <h4>Your tasks today</h4>
+    <br>
+    {% if not tasks %}
+        Nothing to do Today
+    {% else %}
+        <table class="table align-middle text-center">
+            {% for task in tasks %}
+                {% if task.done == True %}
+                    <tr class="table-success">
+                {% else %}
+                    <tr>
+                {% endif %}
+                    <td class="col-5">{{ task.event }}</td>
+                    {% if task.done == True %}
+                        <td class="col-2">Done</td>
+                        <td class="col-5">
+                            <button class="btn btn-dark" onclick="window.location.href='{{url_for('asUndone', time=task.event_date, id=task.id)}}';">
+                                Mark as Undone <i class="bi bi-arrow-counterclockwise"></i>
+                            </button>
+                    {% else %}
+                        <td class="col-2">Not done yet</td>
+                        <td class="col-5">
+                            <button class="btn btn-success" onclick="window.location.href='{{url_for('asDone', time=task.event_date, id=task.id)}}';">
+                                Mark as Done <i class="bi bi-check-circle-fill"></i>
+                            </button>
+                    {% endif %}
+                        <button class="btn btn-danger" onclick="window.location.href='{{url_for('destroy', time=task.event_date, id=task.id)}}';">
+                            Delete Task <i class="bi bi-trash-fill"></i>
+                        </button>
+                        <button class="btn btn-info text-light" onclick="window.location.href='{{url_for('edit', time=task.event_date, id=task.id)}}';">
+                            Edit Task <i class="bi bi-pencil-fill"></i>
+                        </button>
+                    </td>
+                </tr>
+            {% endfor %}
+        </table>
+    {% endif %}
+
+{% endblock %}
